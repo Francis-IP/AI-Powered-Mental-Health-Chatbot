@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mental Health Support Chat</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/style.css') }}">
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h1>Mental Health Support Chat</h1>
+            <p class="subtitle">A safe space to share your feelings</p>
+        </div>
+        <div class="mood-tracker">
+            <p>Current Mood: <span id="current-mood">--</span></p>
+        </div>
+        <div class="chat-messages" id="chat-messages">
+            <div class="message bot-message">
+                Hello! I'm here to listen and support you. How are you feeling today?
+            </div>
+        </div>
+        <div class="chat-input">
+            <input type="text" id="user-input" placeholder="Type your message here...">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+    <script src="{{ url_for('static', path='/js/chat.js') }}"></script>
+</body>
+</html>
