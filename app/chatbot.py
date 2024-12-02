@@ -1,4 +1,5 @@
 from .mood_tracker import MoodTracker
+from .resources import ResourceManager
 
 class MentalHealthBot:
     def __init__(self):
@@ -58,6 +59,9 @@ class MentalHealthBot:
         
         # Add mood tracker
         self.mood_tracker = MoodTracker()
+        
+        # Add resource manager
+        self.resource_manager = ResourceManager()
 
     def identify_emotion_category(self, text):
         text = text.lower()
@@ -99,11 +103,20 @@ class MentalHealthBot:
         )
         mood_pattern = self.mood_tracker.get_mood_pattern()
         
+        # Add resource recommendations
+        resources = None
+        quick_tip = None
+        if emotion_category != 'general':
+            resources = self.resource_manager.get_resources(emotion_category)
+            quick_tip = self.resource_manager.get_quick_tip(emotion_category)
+        
         return {
             'response': response,
             'sentiment': sentiment,
             'emotion_category': emotion_category,
             'emergency': False,
             'mood_data': mood_data,
-            'mood_pattern': mood_pattern
+            'mood_pattern': mood_pattern,
+            'resources': resources,
+            'quick_tip': quick_tip
         }

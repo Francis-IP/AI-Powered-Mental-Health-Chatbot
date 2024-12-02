@@ -1,15 +1,27 @@
-// Add this new function at the top
-async function updateMoodDisplay(moodData, moodPattern) {
-    const moodDisplay = document.getElementById('current-mood');
-    moodDisplay.innerHTML = `
-        <div class="mood-summary">
-            <h3>Mood Tracking</h3>
-            <pre>${moodData}</pre>
-            <p class="mood-pattern">${moodPattern}</p>
-        </div>
-    `;
+// Add this new function at the top of your file
+function displayResources(resources, quickTip) {
+    if (!resources && !quickTip) return;
+
+    const chatMessages = document.getElementById('chat-messages');
+    
+    if (quickTip) {
+        const tipDiv = document.createElement('div');
+        tipDiv.className = 'message bot-message quick-tip';
+        tipDiv.innerHTML = `<strong>Quick Tip:</strong> ${quickTip}`;
+        chatMessages.appendChild(tipDiv);
+    }
+    
+    if (resources) {
+        const resourceDiv = document.createElement('div');
+        resourceDiv.className = 'message bot-message resources';
+        resourceDiv.innerHTML = `<div class="resources-content">${resources.replace(/\n/g, '<br>')}</div>`;
+        chatMessages.appendChild(resourceDiv);
+    }
+    
+    chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
+// Your existing sendMessage function should be updated to:
 async function sendMessage() {
     const input = document.getElementById('user-input');
     const message = input.value.trim();
@@ -32,44 +44,23 @@ async function sendMessage() {
         const data = await response.json();
         addMessage('bot', data.response);
         
-        // Update mood tracking display with new data
+        // Display resources if available
+        if (data.resources || data.quick_tip) {
+            displayResources(data.resources, data.quick_tip);
+        }
+        
+        // Update mood tracking display
         if (data.mood_data && data.mood_pattern) {
             updateMoodDisplay(data.mood_data, data.mood_pattern);
         } else {
-            // Fallback to basic mood display
             if (data.sentiment && data.emotion_category) {
                 document.getElementById('current-mood').textContent = 
                     `${data.emotion_category} (${data.sentiment})`;
             }
-        }
-
-        // Fetch additional mood history
-        try {
-            const historyResponse = await fetch('/mood-history');
-            const historyData = await historyResponse.json();
-            if (historyData.mood_data) {
-                updateMoodDisplay(historyData.mood_data, data.mood_pattern || '');
-            }
-        } catch (historyError) {
-            console.log('Error fetching mood history:', historyError);
         }
     } catch (error) {
         addMessage('bot', 'Sorry, I encountered an error. Please try again.');
     }
 }
 
-function addMessage(sender, message) {
-    const chatMessages = document.getElementById('chat-messages');
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `message ${sender}-message`;
-    messageDiv.textContent = message;
-    chatMessages.appendChild(messageDiv);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-}
-
-// Add Enter key functionality
-document.getElementById('user-input').addEventListener('keypress', function(event) {
-    if (event.key === 'Enter') {
-        sendMessage();
-    }
-});
+// Keep your existing addMessage function and event listener
