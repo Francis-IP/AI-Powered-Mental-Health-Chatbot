@@ -1,5 +1,6 @@
 from .mood_tracker import MoodTracker
 from .resources import ResourceManager
+from .exercises import ExerciseManager
 
 class MentalHealthBot:
     def __init__(self):
@@ -57,11 +58,24 @@ class MentalHealthBot:
             'achievement': ['proud', 'accomplished', 'succeeded', 'achieved', 'completed']
         }
         
-        # Add mood tracker
+        # Initialize managers
         self.mood_tracker = MoodTracker()
-        
-        # Add resource manager
         self.resource_manager = ResourceManager()
+        self.exercise_manager = ExerciseManager()
+        
+        # Add conversation state tracking
+        self.conversation_state = {
+            'exercise_in_progress': False,
+            'current_exercise': None,
+            'exercise_step': 0
+        }
+        
+        # Add trigger words for exercises
+        self.exercise_triggers = {
+            'anxiety': ['breathing', 'meditation'],
+            'stress': ['breathing', 'meditation'],
+            'sadness': ['grounding', 'meditation']
+        }
 
     def identify_emotion_category(self, text):
         text = text.lower()
@@ -71,6 +85,74 @@ class MentalHealthBot:
             if any(keyword in text for keyword in keywords):
                 return category
         return 'general'
+
+    def analyze_sentiment(self, text):
+        # Add your sentiment analysis code here
+        # For now, using a simple keyword approach
+        positive_words = {'happy', 'good', 'great', 'wonderful', 'fantastic'}
+        negative_words = {'sad', 'bad', 'anxious', 'stressed', 'worried'}
+        
+        text = text.lower()
+        words = set(text.split())
+        
+        if len(words.intersection(positive_words)) > len(words.intersection(negative_words)):
+            return 'positive'
+        elif len(words.intersection(negative_words)) > len(words.intersection(positive_words)):
+            return 'negative'
+        return 'neutral'
+
+    def check_for_exercise_request(self, user_input):
+        exercise_words = {'exercise', 'technique', 'help', 'calm', 'relax'}
+        return any(word in user_input.lower() for word in exercise_words)
+
+    def get_exercise_response(self, emotion_category):
+        if emotion_category in self.exercise_triggers:
+            import random
+            exercise_type = random.choice(self.exercise_triggers[emotion_category])
+            exercise = self.exercise_manager.get_exercise(exercise_type)
+            
+            if exercise:
+                self.conversation_state['exercise_in_progress'] = True
+                self.conversation_state['current_exercise'] = exercise
+                self.conversation_state['exercise_step'] = 0
+                
+                return {
+                    'type': 'exercise',
+                    'content': f"Let's try the {exercise['name']}. It takes about {exercise['duration']}. Would you like to begin?"
+                }
+        return None
+
+    def handle_exercise_progress(self, user_input):
+        if not self.conversation_state['exercise_in_progress']:
+            return None
+            
+        exercise = self.conversation_state['current_exercise']
+        step = self.conversation_state['exercise_step']
+        
+        if 'stop' in user_input.lower() or 'quit' in user_input.lower():
+            self.conversation_state['exercise_in_progress'] = False
+            return {
+                'type': 'exercise',
+                'content': "We've stopped the exercise. How are you feeling now?"
+            }
+            
+        if step < len(exercise['steps']):
+            current_step = exercise['steps'][step]
+            self.conversation_state['exercise_step'] += 1
+            
+            if step == len(exercise['steps']) - 1:
+                self.conversation_state['exercise_in_progress'] = False
+                return {
+                    'type': 'exercise',
+                    'content': f"{current_step}\n\nThat completes our exercise. How do you feel now?"
+                }
+            
+            return {
+                'type': 'exercise',
+                'content': f"{current_step}\n\nLet me know when you're ready for the next step."
+            }
+            
+        return None
 
     def get_response(self, user_input):
         # Check for emergency first
@@ -82,9 +164,31 @@ class MentalHealthBot:
                 'emergency': True
             }
         
-        # Get sentiment and specific emotion category
+        # Check if we're in the middle of an exercise
+        exercise_response = self.handle_exercise_progress(user_input)
+        if exercise_response:
+            return {
+                'response': exercise_response['content'],
+                'type': 'exercise',
+                'sentiment': 'neutral',
+                'emergency': False
+            }
+        
+        # Get sentiment and emotion category
         sentiment = self.analyze_sentiment(user_input)
         emotion_category = self.identify_emotion_category(user_input)
+        
+        # Check if user is requesting an exercise
+        if self.check_for_exercise_request(user_input):
+            exercise_response = self.get_exercise_response(emotion_category)
+            if exercise_response:
+                return {
+                    'response': exercise_response['content'],
+                    'type': 'exercise',
+                    'sentiment': sentiment,
+                    'emotion_category': emotion_category,
+                    'emergency': False
+                }
         
         # Select appropriate response
         if sentiment in ['positive', 'negative'] and emotion_category in self.responses[sentiment]:
@@ -120,3 +224,14 @@ class MentalHealthBot:
             'resources': resources,
             'quick_tip': quick_tip
         }
+
+    def emergency_check(self, text):
+        emergency_keywords = ['suicide', 'kill myself', 'want to die', 'end my life']
+        text = text.lower()
+        
+        if any(keyword in text for keyword in emergency_keywords):
+            return True, """I'm concerned about what you're saying. Please know that you're not alone. 
+            Consider reaching out to a mental health professional or crisis hotline:
+            National Suicide Prevention Lifeline (US): 988 or 1-800-273-8255
+            Crisis Text Line: Text HOME to 741741"""
+        return False, None
